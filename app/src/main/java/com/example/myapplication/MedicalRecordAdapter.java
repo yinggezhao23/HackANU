@@ -1,6 +1,5 @@
 package com.example.myapplication;
 
-
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -9,14 +8,17 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.myapplication.model.MedicalRecord;
+import com.example.myapplication.model.PatientInfo;
+
 import java.util.List;
 
 // ConversationAdapter.java
-public class ConversationAdapter extends RecyclerView.Adapter<ConversationAdapter.ConversationViewHolder> {
-    private List<Conversation> conversations;
+public class MedicalRecordAdapter extends RecyclerView.Adapter<MedicalRecordAdapter.ConversationViewHolder> {
+    private List<MedicalRecord> medicalRecords;
 
-    public ConversationAdapter(List<Conversation> conversations) {
-        this.conversations = conversations;
+    public MedicalRecordAdapter(List<MedicalRecord> medicalRecords) {
+        this.medicalRecords = medicalRecords;
     }
 
     @NonNull
@@ -28,13 +30,13 @@ public class ConversationAdapter extends RecyclerView.Adapter<ConversationAdapte
 
     @Override
     public void onBindViewHolder(@NonNull ConversationViewHolder holder, int position) {
-        Conversation conversation = conversations.get(position);
-        holder.bind(conversation);
+        MedicalRecord medicalRecord = medicalRecords.get(position);
+        holder.bind(medicalRecord);
     }
 
     @Override
     public int getItemCount() {
-        return conversations.size();
+        return medicalRecords.size();
     }
 
     static class ConversationViewHolder extends RecyclerView.ViewHolder {
@@ -51,12 +53,13 @@ public class ConversationAdapter extends RecyclerView.Adapter<ConversationAdapte
             doctorResponseTextView = itemView.findViewById(R.id.doctor_response_text_view);
         }
 
-        public void bind(Conversation conversation) {
-            PatientInfo patientInfo = conversation.getPatientInfo();
+        public void bind(MedicalRecord medicalRecord) {
+            PatientInfo patientInfo = medicalRecord.getPatientInfo();
             diseaseNameTextView.setText("病名: " + patientInfo.getDiseaseName());
             diseaseProgressTextView.setText("病程: " + patientInfo.getDiseaseProgress());
             symptomsTextView.setText("病症: " + patientInfo.getSymptoms());
-            doctorResponseTextView.setText("医生回复: " + conversation.getDoctorResponse());
+            // 用药剂量
+            doctorResponseTextView.setText("医生回复: " + medicalRecord.getDoctorResponse());
         }
     }
 }
