@@ -53,6 +53,7 @@ public class MedicalRecordListActivity extends AppCompatActivity implements Voic
     private EditText symptomsEditText;
     private EditText diseaseProgressEditText;
     private static final int REQUEST_RECORD_AUDIO_PERMISSION = 200;
+    private PatientInfo patientInfo;
 
     private static final String API_KEY = "";
     private OkHttpClient client = new OkHttpClient();
@@ -117,8 +118,8 @@ public class MedicalRecordListActivity extends AppCompatActivity implements Voic
     }
 
 
-    private void addNewMedicalRecord(PatientInfo patientInfo) {
-        MedicalRecord newMedicalRecord = new MedicalRecord(patientInfo, "");
+    private void addNewMedicalRecord(PatientInfo patientInfo, String doctorResponse) {
+        MedicalRecord newMedicalRecord = new MedicalRecord(patientInfo, doctorResponse);
         medicalRecords.add(0, newMedicalRecord);
         medicalRecordAdapter.notifyItemInserted(0);
         medicalRecordRecyclerView.scrollToPosition(0);
@@ -143,47 +144,46 @@ public class MedicalRecordListActivity extends AppCompatActivity implements Voic
                 .post(requestBody)
                 .build();
 
-//        // 异步发送请求
-//        client.newCall(request).enqueue(new Callback() {
-//            @Override
-//            public void onFailure(Call call, IOException e) {
-//                e.printStackTrace();
-//                runOnUiThread(() ->
-//                        Toast.makeText(MedicalRecordListActivity.this, "Failed to upload audio", Toast.LENGTH_LONG).show()
-//                );
-//            }
-//
-//            @Override
-//            public void onResponse(Call call, Response response) throws IOException {
-//                if (!response.isSuccessful()) {
-//                    runOnUiThread(() ->
-//                            Toast.makeText(MedicalRecordListActivity.this, "Failed to transcribe audio", Toast.LENGTH_LONG).show()
-//                    );
-//                    return;
-//                }
-//
-//                // 使用 Gson 将响应体转为 JsonObject
-//                Gson gson = new Gson();
-//                JsonObject jsonObject = gson.fromJson(response.body().charStream(), JsonObject.class);
-//                String transcription = jsonObject.get("text").getAsString();
-        String transcription = "病名: 慢性支气管炎\n" +
-                "病程: 患者已反复发作3年，最近1个月病情加重，主要表现为晨起咳嗽、咳痰，尤其在天气寒冷或空气污染时症状明显加重。\n" +
-                "病症描述: 患者每天早上起床后常有咳嗽，并伴随大量黄痰，偶有胸闷及轻微气喘。每次感冒后咳嗽症状持续时间较长，夜间咳嗽影响睡眠。过去一个月，咳嗽频率明显增加，痰液颜色变深，患者自觉体力下降。\n" +
-                "用药方案:\n" +
-                "阿莫西林: 每次500mg，每日三次，饭后服用，疗程7天。\n" +
-                "氨溴索口服液: 每次30mg，每日三次，帮助化痰，持续使用两周。\n" +
-                "沙丁胺醇吸入剂: 必要时吸入，每次两喷，每日不超过四次，用于缓解气喘症状。\n" +
-                "注意事项: 继续避免接触冷空气和烟尘，定期复查肺功能，若症状未见改善需调整治疗方案。";
+        // 异步发送请求
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                e.printStackTrace();
+                runOnUiThread(() ->
+                        Toast.makeText(MedicalRecordListActivity.this, "Failed to upload audio", Toast.LENGTH_LONG).show()
+                );
+            }
 
-//                // 在主线程上更新 UI
-//                runOnUiThread(() ->
-//                        Toast.makeText(MedicalRecordListActivity.this, transcription, Toast.LENGTH_LONG).show()
-//                );
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if (!response.isSuccessful()) {
+                    runOnUiThread(() ->
+                            Toast.makeText(MedicalRecordListActivity.this, "Failed to transcribe audio", Toast.LENGTH_LONG).show()
+                    );
+                    return;
+                }
 
-        // 调用方法，将 transcription 发送到 ChatGPT API
-        sendToChatGPT(transcription);
-//            }
-//        });
+                // 使用 Gson 将响应体转为 JsonObject
+                Gson gson = new Gson();
+                JsonObject jsonObject = gson.fromJson(response.body().charStream(), JsonObject.class);
+                String transcription = jsonObject.get("text").getAsString();
+//        String transcription = "我咳嗽很久了，应该有三年了吧，最近这一个月感觉咳得更厉害了，尤其早上起来的时候，咳得停不下来，还带痰。尤其是天气冷或者空气不好的时候，情况就更糟糕。\n" +
+//                "\n" +
+//                "每天早上起来我都会咳嗽，痰有点多，颜色也变得黄了些。有时候我还觉得胸口有点闷，喘不过气来。每次感冒之后，咳嗽就会持续很长时间，特别是晚上咳得睡不好觉。最近这段时间，咳嗽频率变多了，痰也变浓了，总感觉整个人越来越没力气。\n" +
+//                "\n" +
+//                "医生让我吃点药，比如阿莫西林，每天三次，饭后吃；还有一种化痰的药，每次吃30毫升，也是一天三次；有时候喘得厉害了，我还要用一种吸的药喷两下，缓解喘不过气的感觉。不过一天不能喷太多，最多四次。\n" +
+//                "\n" +
+//                "医生还提醒我，尽量别碰冷空气，也别接触烟尘，还得定期去复查肺功能。如果症状没改善，可能还得换别的药来治疗。";
+
+                // 在主线程上更新 UI
+                runOnUiThread(() ->
+                        symptomsEditText.setText("识别结果：" + transcription)
+                );
+
+//         调用方法，将 transcription 发送到 ChatGPT API
+                sendToChatGPT(transcription);
+            }
+        });
     }
 
     // 发送 transcription 到 ChatGPT，并获取 JSON 响应
@@ -250,6 +250,59 @@ public class MedicalRecordListActivity extends AppCompatActivity implements Voic
         });
     }
 
+    // 发送 transcription 到 ChatGPT，并获取 JSON 响应
+    private void sendToChatGPT2(String transcription) {
+        // 构建请求体
+        String prompt = "进一步分析一下病人这个情况是否要就医，并以AI医生的口吻，给他回复。你的回复里不要有任何前后文的样子，直接把我当成病人向我说话：" + transcription;
+        JsonObject bodyJson = new JsonObject();
+        bodyJson.addProperty("model", "gpt-3.5-turbo");
+        bodyJson.add("messages", new Gson().toJsonTree(new Message[]{new Message("user", prompt)}));
+
+        RequestBody requestBody = RequestBody.create(bodyJson.toString(), MediaType.parse("application/json"));
+
+        // 构建请求
+        Request request = new Request.Builder()
+                .url("https://api.openai.com/v1/chat/completions")
+                .header("Authorization", "Bearer " + API_KEY)
+                .post(requestBody)
+                .build();
+
+        // 异步发送请求
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                e.printStackTrace();
+                runOnUiThread(() ->
+                        Toast.makeText(MedicalRecordListActivity.this, "Failed to get JSON from ChatGPT", Toast.LENGTH_LONG).show()
+                );
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if (!response.isSuccessful()) {
+                    runOnUiThread(() ->
+                            Toast.makeText(MedicalRecordListActivity.this, "Failed to get JSON from ChatGPT", Toast.LENGTH_LONG).show()
+                    );
+                    return;
+                }
+
+                // 解析 ChatGPT 的响应
+                Gson gson = new Gson();
+                JsonObject jsonObject = gson.fromJson(response.body().charStream(), JsonObject.class);
+                String chatGptResponse = jsonObject.getAsJsonArray("choices").get(0).getAsJsonObject()
+                        .get("message").getAsJsonObject().get("content").getAsString();
+
+                // 在主线程上更新 UI
+                runOnUiThread(() ->
+                        {
+                            addNewMedicalRecord(patientInfo, chatGptResponse);
+                            bottomSheetDialog.dismiss();
+                        }
+                );
+            }
+        });
+    }
+
     // 用于 OpenAI Chat API 的消息模型
     private class Message {
         String role;
@@ -299,9 +352,8 @@ public class MedicalRecordListActivity extends AppCompatActivity implements Voic
             String diseaseProgress = diseaseProgressEditText.getText().toString();
             String symptoms = symptomsEditText.getText().toString();
 
-            PatientInfo patientInfo = new PatientInfo(diseaseName, diseaseProgress, symptoms);
-            addNewMedicalRecord(patientInfo);
-            bottomSheetDialog.dismiss();
+            patientInfo = new PatientInfo(diseaseName, diseaseProgress, symptoms);
+            sendToChatGPT2("diseaseName:" + diseaseName + "\ndiseaseProgress:" + diseaseProgress + "\nsymptoms:" + symptoms);
         });
     }
 
