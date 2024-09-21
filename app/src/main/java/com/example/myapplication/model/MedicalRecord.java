@@ -1,8 +1,5 @@
 package com.example.myapplication.model;
 
-import java.util.ArrayList;
-import java.util.List;
-
 // 病例类
 public class MedicalRecord {
     private PatientInfo patientInfo;
