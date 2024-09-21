@@ -4,6 +4,7 @@ package com.example.myapplication;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
@@ -71,6 +72,7 @@ public class MedicalRecordListActivity extends AppCompatActivity implements Voic
     @Override
     public void onRecordingFinished(File audioFile) {
         runOnUiThread(() -> {
+            Log.i("onRecordingFinished", audioFile.toString());
             Toast.makeText(this, "录音已完成并发送", Toast.LENGTH_SHORT).show();
         });
 
