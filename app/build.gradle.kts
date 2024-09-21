@@ -40,6 +40,7 @@ dependencies {
     implementation("androidx.cardview:cardview:1.0.0")
     implementation("androidx.recyclerview:recyclerview:1.2.1")
     implementation("com.squareup.okhttp3:okhttp:4.9.1")
+    implementation("com.google.code.gson:gson:2.8.6")
     // Kotlin standard library
     implementation(kotlin("stdlib"))
     testImplementation(libs.junit)

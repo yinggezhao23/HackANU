@@ -1,5 +1,6 @@
 package com.example.myapplication;
 
+import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.util.Log;
@@ -8,11 +9,14 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.myapplication.model.MedicalRecord;
 import com.example.myapplication.model.PatientInfo;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -35,10 +39,10 @@ public class MedicalRecordListActivity extends AppCompatActivity implements Voic
     private List<MedicalRecord> medicalRecords;
     private Button startConsultationButton;
     private VoiceInputManager voiceInputManager;
-
-    private static final String API_KEY = "your-api-key-here";
-
     private static final int REQUEST_RECORD_AUDIO_PERMISSION = 200;
+
+    private static final String API_KEY = "";
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -49,6 +53,7 @@ public class MedicalRecordListActivity extends AppCompatActivity implements Voic
         setupRecyclerView();
         setupConsultationButton();
         setupVoiceInputManager();
+
     }
 
     private void initializeViews() {
@@ -110,11 +115,12 @@ public class MedicalRecordListActivity extends AppCompatActivity implements Voic
     }
 
     private void uploadAudioAndGetTranscription(File file) throws IOException {
-        // 创建 OkHttpClient 实例
-        OkHttpClient client = new OkHttpClient();
-
         // 创建文件的请求体
         RequestBody fileBody = RequestBody.create(file, MediaType.parse("audio/wav"));
+
+        Log.e("File Path", file.getAbsolutePath());
+        Log.e("MIME Type", fileBody.contentType().toString());
+
 
         // 创建 Multipart 请求体，包括文件和模型参数
         RequestBody requestBody = new MultipartBody.Builder()
@@ -130,6 +136,7 @@ public class MedicalRecordListActivity extends AppCompatActivity implements Voic
                 .post(requestBody)
                 .build();
 
+        OkHttpClient client = new OkHttpClient();
         // 异步发送请求
         client.newCall(request).enqueue(new Callback() {
             @Override
@@ -155,8 +162,12 @@ public class MedicalRecordListActivity extends AppCompatActivity implements Voic
                     return;
                 }
 
-                // 获取转录文本
-                final String transcription = response.body().string();
+                // 使用 Gson 将响应体转为 JsonObject
+                Gson gson = new Gson();
+                JsonObject jsonObject = gson.fromJson(response.body().charStream(), JsonObject.class);
+                String transcription = jsonObject.get("text").getAsString();
+
+                // sdf sdfd dfsf dffdjfklf
 
                 // 在主线程上更新 UI
                 runOnUiThread(new Runnable() {
@@ -168,5 +179,17 @@ public class MedicalRecordListActivity extends AppCompatActivity implements Voic
                 });
             }
         });
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_RECORD_AUDIO_PERMISSION) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Toast.makeText(this, "录音权限已授予，请再次尝试", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "录音权限被拒绝", Toast.LENGTH_SHORT).show();
+            }
+        }
     }
 }

@@ -1,12 +1,15 @@
 package com.example.myapplication;
 
-import android.content.Context;
+import android.Manifest;
+import android.app.Activity;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.EditText;
+
+import androidx.core.app.ActivityCompat;
 
 import com.example.myapplication.model.PatientInfo;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
@@ -16,21 +19,22 @@ public class ConsultationBottomSheet {
     private VoiceInputManager voiceInputManager;
     private VoiceWaveformView voiceWaveformView;
     private Button recordButton;
-    private Context context;
+    private Activity activity;
+    private static final int REQUEST_RECORD_AUDIO_PERMISSION = 200;
 
     public interface OnSubmitListener {
         void onSubmit(PatientInfo patientInfo);
     }
 
-    public ConsultationBottomSheet(Context context, VoiceInputManager voiceInputManager) {
-        this.context = context;
+    public ConsultationBottomSheet(Activity activity, VoiceInputManager voiceInputManager) {
+        this.activity = activity;
         this.voiceInputManager = voiceInputManager;
         setupBottomSheet();
     }
 
     private void setupBottomSheet() {
-        bottomSheetDialog = new BottomSheetDialog(context);
-        View bottomSheetView = LayoutInflater.from(context).inflate(R.layout.bottom_sheet_consultation, null);
+        bottomSheetDialog = new BottomSheetDialog(activity);
+        View bottomSheetView = LayoutInflater.from(activity).inflate(R.layout.bottom_sheet_consultation, null);
         bottomSheetDialog.setContentView(bottomSheetView);
 
         // 设置软键盘模式为 SOFT_INPUT_ADJUST_PAN
@@ -83,6 +87,7 @@ public class ConsultationBottomSheet {
             showVoiceWaveform();
         } else {
             // This should be handled by the activity
+            requestRecordPermission();
         }
     }
 
@@ -109,5 +114,11 @@ public class ConsultationBottomSheet {
 
     public void show() {
         bottomSheetDialog.show();
+    }
+
+    private void requestRecordPermission() {
+        ActivityCompat.requestPermissions(activity,
+                new String[]{Manifest.permission.RECORD_AUDIO},
+                REQUEST_RECORD_AUDIO_PERMISSION);
     }
 }
