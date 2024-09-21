@@ -25,6 +25,8 @@ public class VoiceInputManager {
     private static final int BITS_PER_SAMPLE = 16;
     private static final int CHANNELS = 1;
 
+    private static final String API_KEY = "your-api-key-here";
+
     private AudioRecord audioRecord;
     private boolean isRecording;
     private Context context;
