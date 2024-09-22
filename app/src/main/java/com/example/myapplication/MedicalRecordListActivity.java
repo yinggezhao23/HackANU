@@ -29,6 +29,8 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.io.IOException;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -54,6 +56,7 @@ public class MedicalRecordListActivity extends AppCompatActivity implements Voic
     private EditText diseaseProgressEditText;
     private static final int REQUEST_RECORD_AUDIO_PERMISSION = 200;
     private PatientInfo patientInfo;
+    private String speakContent;
 
     private static final String API_KEY = "";
     private OkHttpClient client = new OkHttpClient();
@@ -94,7 +97,7 @@ public class MedicalRecordListActivity extends AppCompatActivity implements Voic
     @Override
     public void onRecordingFinished(File audioFile) {
         runOnUiThread(() -> {
-            Toast.makeText(this, "录音已完成并发送", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Recording recognition...", Toast.LENGTH_SHORT).show();
         });
 
         Log.i("onRecordingFinished", audioFile.toString());
@@ -125,8 +128,7 @@ public class MedicalRecordListActivity extends AppCompatActivity implements Voic
         medicalRecordRecyclerView.scrollToPosition(0);
     }
 
-    // 上传音频并获取转录文本
-    private void uploadAudioAndGetTranscription(File file) throws IOException {
+    private void sendToWhisper(File file, Consumer<String> onSuccess) throws IOException {
         // 创建文件的请求体
         RequestBody fileBody = RequestBody.create(file, MediaType.parse("audio/wav"));
 
@@ -156,6 +158,8 @@ public class MedicalRecordListActivity extends AppCompatActivity implements Voic
 
             @Override
             public void onResponse(Call call, Response response) throws IOException {
+                String test = response.body().string();
+                Log.e("TEST", test);
                 if (!response.isSuccessful()) {
                     runOnUiThread(() ->
                             Toast.makeText(MedicalRecordListActivity.this, "Failed to transcribe audio", Toast.LENGTH_LONG).show()
@@ -165,8 +169,21 @@ public class MedicalRecordListActivity extends AppCompatActivity implements Voic
 
                 // 使用 Gson 将响应体转为 JsonObject
                 Gson gson = new Gson();
-                JsonObject jsonObject = gson.fromJson(response.body().charStream(), JsonObject.class);
+                JsonObject jsonObject = gson.fromJson(test, JsonObject.class);
                 String transcription = jsonObject.get("text").getAsString();
+                onSuccess.accept(transcription);
+            }
+        });
+    }
+
+    // 上传音频并获取转录文本
+    private void uploadAudioAndGetTranscription(File file) throws IOException {
+        sendToWhisper(file, (transcription) -> {
+            speakContent = transcription;
+            // 调用方法，将 transcription 发送到 ChatGPT API
+            sendToChatGPT(transcription);
+        });
+
 //        String transcription = "我咳嗽很久了，应该有三年了吧，最近这一个月感觉咳得更厉害了，尤其早上起来的时候，咳得停不下来，还带痰。尤其是天气冷或者空气不好的时候，情况就更糟糕。\n" +
 //                "\n" +
 //                "每天早上起来我都会咳嗽，痰有点多，颜色也变得黄了些。有时候我还觉得胸口有点闷，喘不过气来。每次感冒之后，咳嗽就会持续很长时间，特别是晚上咳得睡不好觉。最近这段时间，咳嗽频率变多了，痰也变浓了，总感觉整个人越来越没力气。\n" +
@@ -174,14 +191,51 @@ public class MedicalRecordListActivity extends AppCompatActivity implements Voic
 //                "医生让我吃点药，比如阿莫西林，每天三次，饭后吃；还有一种化痰的药，每次吃30毫升，也是一天三次；有时候喘得厉害了，我还要用一种吸的药喷两下，缓解喘不过气的感觉。不过一天不能喷太多，最多四次。\n" +
 //                "\n" +
 //                "医生还提醒我，尽量别碰冷空气，也别接触烟尘，还得定期去复查肺功能。如果症状没改善，可能还得换别的药来治疗。";
+//        sendToChatGPT(transcription);
+    }
+
+    private void sendToGpt3_5(String prompt, Consumer<String> onSuccess) {
+        // 构建请求体
+        JsonObject bodyJson = new JsonObject();
+        bodyJson.addProperty("model", "gpt-3.5-turbo");
+        bodyJson.add("messages", new Gson().toJsonTree(new Message[]{new Message("user", prompt)}));
+
+        RequestBody requestBody = RequestBody.create(bodyJson.toString(), MediaType.parse("application/json"));
+
+        // 构建请求
+        Request request = new Request.Builder()
+                .url("https://api.openai.com/v1/chat/completions")
+                .header("Authorization", "Bearer " + API_KEY)
+                .post(requestBody)
+                .build();
+
+        // 异步发送请求
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                e.printStackTrace();
+                runOnUiThread(() -> {
+                    Toast.makeText(MedicalRecordListActivity.this, "Failed to get JSON from ChatGPT", Toast.LENGTH_LONG).show();
+                });
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if (!response.isSuccessful()) {
+                    runOnUiThread(() -> {
+                        Toast.makeText(MedicalRecordListActivity.this, "Failed to get JSON from ChatGPT", Toast.LENGTH_LONG).show();
+                    });
+                    return;
+                }
+
+                // 解析 ChatGPT 的响应
+                Gson gson = new Gson();
+                JsonObject jsonObject = gson.fromJson(response.body().charStream(), JsonObject.class);
+                String chatGptResponse = jsonObject.getAsJsonArray("choices").get(0).getAsJsonObject()
+                        .get("message").getAsJsonObject().get("content").getAsString();
 
                 // 在主线程上更新 UI
-                runOnUiThread(() ->
-                        symptomsEditText.setText("识别结果：" + transcription)
-                );
-
-//         调用方法，将 transcription 发送到 ChatGPT API
-                sendToChatGPT(transcription);
+                onSuccess.accept(chatGptResponse);
             }
         });
     }
@@ -189,117 +243,49 @@ public class MedicalRecordListActivity extends AppCompatActivity implements Voic
     // 发送 transcription 到 ChatGPT，并获取 JSON 响应
     private void sendToChatGPT(String transcription) {
         // 构建请求体
-        String prompt = "把这段话变成一段JSON，格式是{\n" +
-                "  \"diseaseName\": \">sdfskjl\",\n" +
-                "  \"diseaseProgress\": \"sdfsf d\",\n" +
-                "  \"symptoms\": \"sdfsfdfds\"\n" +
-                "}\n\n内容是：" + transcription;
-        JsonObject bodyJson = new JsonObject();
-        bodyJson.addProperty("model", "gpt-3.5-turbo");
-        bodyJson.add("messages", new Gson().toJsonTree(new Message[]{new Message("user", prompt)}));
+        String prompt = "Convert this paragraph into a JSON format {\n" +
+                " \"diseaseName\": \"the content extract from the paragraph\",\n" +
+                " \"diseaseProgress\": \"the content extract from the paragraph\",\n" +
+                " \"symptoms\": \"the content extract from the paragraph\"\n" +
+                "}\n\nThe paragraph is:" + transcription;
 
-        RequestBody requestBody = RequestBody.create(bodyJson.toString(), MediaType.parse("application/json"));
+        sendToGpt3_5(prompt, (chatGptResponse) -> {
+            Gson gson = new Gson();
 
-        // 构建请求
-        Request request = new Request.Builder()
-                .url("https://api.openai.com/v1/chat/completions")
-                .header("Authorization", "Bearer " + API_KEY)
-                .post(requestBody)
-                .build();
+            // 使用 Gson 将响应体转为 JsonObject
+            JsonObject jsonObject = gson.fromJson(chatGptResponse, JsonObject.class);
+            String diseaseName = jsonObject.get("diseaseName").getAsString();
+            String diseaseProgress = jsonObject.get("diseaseProgress").getAsString();
+            String symptoms = jsonObject.get("symptoms").getAsString();
 
-        // 异步发送请求
-        client.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onFailure(Call call, IOException e) {
-                e.printStackTrace();
-                runOnUiThread(() ->
-                        Toast.makeText(MedicalRecordListActivity.this, "Failed to get JSON from ChatGPT", Toast.LENGTH_LONG).show()
-                );
-            }
-
-            @Override
-            public void onResponse(Call call, Response response) throws IOException {
-                if (!response.isSuccessful()) {
-                    runOnUiThread(() ->
-                            Toast.makeText(MedicalRecordListActivity.this, "Failed to get JSON from ChatGPT", Toast.LENGTH_LONG).show()
-                    );
-                    return;
-                }
-
-                // 解析 ChatGPT 的响应
-                Gson gson = new Gson();
-                JsonObject jsonObject = gson.fromJson(response.body().charStream(), JsonObject.class);
-                String chatGptResponse = jsonObject.getAsJsonArray("choices").get(0).getAsJsonObject()
-                        .get("message").getAsJsonObject().get("content").getAsString();
-
-                // 使用 Gson 将响应体转为 JsonObject
-                jsonObject = gson.fromJson(chatGptResponse, JsonObject.class);
-                String diseaseName = jsonObject.get("diseaseName").getAsString();
-                String diseaseProgress = jsonObject.get("diseaseProgress").getAsString();
-                String symptoms = jsonObject.get("symptoms").getAsString();
-
-                // 在主线程上更新 UI
-                runOnUiThread(() ->
-                        {
-                            diseaseNameEditText.setText(diseaseName);
-                            diseaseProgressEditText.setText(diseaseProgress);
-                            symptomsEditText.setText(symptoms);
-                        }
-                );
-            }
+            // 在主线程上更新 UI
+            runOnUiThread(() ->
+                    {
+                        diseaseNameEditText.setText(diseaseName);
+                        diseaseProgressEditText.setText(diseaseProgress);
+                        symptomsEditText.setText(symptoms);
+                    }
+            );
         });
     }
 
     // 发送 transcription 到 ChatGPT，并获取 JSON 响应
     private void sendToChatGPT2(String transcription) {
         // 构建请求体
-        String prompt = "进一步分析一下病人这个情况是否要就医，并以AI医生的口吻，给他回复。你的回复里不要有任何前后文的样子，直接把我当成病人向我说话：" + transcription;
-        JsonObject bodyJson = new JsonObject();
-        bodyJson.addProperty("model", "gpt-3.5-turbo");
-        bodyJson.add("messages", new Gson().toJsonTree(new Message[]{new Message("user", prompt)}));
-
-        RequestBody requestBody = RequestBody.create(bodyJson.toString(), MediaType.parse("application/json"));
-
-        // 构建请求
-        Request request = new Request.Builder()
-                .url("https://api.openai.com/v1/chat/completions")
-                .header("Authorization", "Bearer " + API_KEY)
-                .post(requestBody)
-                .build();
-
-        // 异步发送请求
-        client.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onFailure(Call call, IOException e) {
-                e.printStackTrace();
-                runOnUiThread(() ->
-                        Toast.makeText(MedicalRecordListActivity.this, "Failed to get JSON from ChatGPT", Toast.LENGTH_LONG).show()
-                );
-            }
-
-            @Override
-            public void onResponse(Call call, Response response) throws IOException {
-                if (!response.isSuccessful()) {
-                    runOnUiThread(() ->
-                            Toast.makeText(MedicalRecordListActivity.this, "Failed to get JSON from ChatGPT", Toast.LENGTH_LONG).show()
-                    );
-                    return;
+        String prompt = "Further analyze whether the patient's condition requires medical treatment, and respond to him in the tone of an AI doctor. There should not be any context in your response, and talk to me directly as if I were a patient. Based on the patient's description, first determine whether there are obvious health problems. If the patient's description may be just a joke or not serious, please respond in a humorous but polite manner, and do not give direct medical advice. If the description involves health risks, please provide appropriate advice based on the severity of the symptoms. The symptoms described by the patient are not necessarily serious or urgent. Please provide appropriate advice based on the severity of the symptoms, which may include some simple daily care, lifestyle adjustments, or if the symptoms are mild, suggest that there is no need to worry too much. If the symptoms are severe or risky, prompt the patient to seek medical attention in a timely manner.If user send nothing, just say it is empty\n\n" + transcription;
+        bottomSheetDialog.dismiss();
+        runOnUiThread(() ->
+                {
+                    Toast.makeText(this, "Content sent", Toast.LENGTH_SHORT).show();
                 }
-
-                // 解析 ChatGPT 的响应
-                Gson gson = new Gson();
-                JsonObject jsonObject = gson.fromJson(response.body().charStream(), JsonObject.class);
-                String chatGptResponse = jsonObject.getAsJsonArray("choices").get(0).getAsJsonObject()
-                        .get("message").getAsJsonObject().get("content").getAsString();
-
-                // 在主线程上更新 UI
-                runOnUiThread(() ->
-                        {
-                            addNewMedicalRecord(patientInfo, chatGptResponse);
-                            bottomSheetDialog.dismiss();
-                        }
-                );
-            }
+        );
+        sendToGpt3_5(prompt, (chatGptResponse) -> {
+            // 在主线程上更新 UI
+            runOnUiThread(() ->
+                    {
+                        addNewMedicalRecord(patientInfo, chatGptResponse);
+                    }
+            );
         });
     }
 
@@ -319,9 +305,9 @@ public class MedicalRecordListActivity extends AppCompatActivity implements Voic
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == REQUEST_RECORD_AUDIO_PERMISSION) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                Toast.makeText(this, "录音权限已授予，请再次尝试", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Recording permission has been granted, please try again", Toast.LENGTH_SHORT).show();
             } else {
-                Toast.makeText(this, "录音权限被拒绝", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Recording permission denied", Toast.LENGTH_SHORT).show();
             }
         }
     }
@@ -352,7 +338,7 @@ public class MedicalRecordListActivity extends AppCompatActivity implements Voic
             String diseaseProgress = diseaseProgressEditText.getText().toString();
             String symptoms = symptomsEditText.getText().toString();
 
-            patientInfo = new PatientInfo(diseaseName, diseaseProgress, symptoms);
+            patientInfo = new PatientInfo(diseaseName, diseaseProgress, symptoms, speakContent);
             sendToChatGPT2("diseaseName:" + diseaseName + "\ndiseaseProgress:" + diseaseProgress + "\nsymptoms:" + symptoms);
         });
     }
@@ -375,7 +361,7 @@ public class MedicalRecordListActivity extends AppCompatActivity implements Voic
     private void handleRecordButtonPress() {
         if (voiceInputManager.checkPermission()) {
             voiceInputManager.startRecording();
-            recordButton.setText("松开发送");
+            recordButton.setText("Release to send");
             showVoiceWaveform();
         } else {
             // This should be handled by the activity
@@ -385,7 +371,7 @@ public class MedicalRecordListActivity extends AppCompatActivity implements Voic
 
     private void handleRecordButtonRelease() {
         voiceInputManager.stopRecording();
-        recordButton.setText("按住说话");
+        recordButton.setText("Press to speak");
         hideVoiceWaveform();
     }
 

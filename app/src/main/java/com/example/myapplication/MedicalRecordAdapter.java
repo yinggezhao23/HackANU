@@ -40,6 +40,7 @@ public class MedicalRecordAdapter extends RecyclerView.Adapter<MedicalRecordAdap
     }
 
     static class ConversationViewHolder extends RecyclerView.ViewHolder {
+        private TextView speakContentTextView;
         private TextView diseaseNameTextView;
         private TextView diseaseProgressTextView;
         private TextView symptomsTextView;
@@ -47,6 +48,7 @@ public class MedicalRecordAdapter extends RecyclerView.Adapter<MedicalRecordAdap
 
         public ConversationViewHolder(@NonNull View itemView) {
             super(itemView);
+            speakContentTextView = itemView.findViewById(R.id.speak_content);
             diseaseNameTextView = itemView.findViewById(R.id.disease_name_text_view);
             diseaseProgressTextView = itemView.findViewById(R.id.disease_progress_text_view);
             symptomsTextView = itemView.findViewById(R.id.symptoms_text_view);
@@ -55,11 +57,12 @@ public class MedicalRecordAdapter extends RecyclerView.Adapter<MedicalRecordAdap
 
         public void bind(MedicalRecord medicalRecord) {
             PatientInfo patientInfo = medicalRecord.getPatientInfo();
-            diseaseNameTextView.setText("病名: " + patientInfo.getDiseaseName());
-            diseaseProgressTextView.setText("病程: " + patientInfo.getDiseaseProgress());
-            symptomsTextView.setText("病症: " + patientInfo.getSymptoms());
+            speakContentTextView.setText("Patient self-report: " + patientInfo.getSpeakContent());
+            diseaseNameTextView.setText("Disease name: " + patientInfo.getDiseaseName());
+            diseaseProgressTextView.setText("Disease Progress: " + patientInfo.getDiseaseProgress());
+            symptomsTextView.setText("Symptoms: " + patientInfo.getSymptoms());
             // 用药剂量
-            doctorResponseTextView.setText("医生回复: " + medicalRecord.getDoctorResponse());
+            doctorResponseTextView.setText("AI assistant: " + medicalRecord.getDoctorResponse());
         }
     }
 }

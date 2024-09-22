@@ -18,7 +18,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="请描述您的症状"
+                android:text="Please describe your symptoms"
                 android:textSize="18sp"
                 android:textStyle="bold"
                 android:layout_marginBottom="16dp"/>
@@ -30,7 +30,7 @@
                 android:minHeight="48dp"
                 android:paddingTop="12dp"
                 android:paddingBottom="12dp"
-                android:hint="病名"
+                android:hint="Disease name"
                 android:layout_marginBottom="8dp"/>
 
             <EditText
@@ -40,7 +40,7 @@
                 android:minHeight="48dp"
                 android:paddingTop="12dp"
                 android:paddingBottom="12dp"
-                android:hint="病程"
+                android:hint="Disease progression"
                 android:layout_marginBottom="8dp"/>
 
             <EditText
@@ -50,7 +50,7 @@
                 android:minHeight="48dp"
                 android:paddingTop="12dp"
                 android:paddingBottom="12dp"
-                android:hint="症状"
+                android:hint="Symptoms"
                 android:layout_marginBottom="16dp"/>
 
         </LinearLayout>
@@ -75,7 +75,7 @@
             android:layout_height="wrap_content"
             android:minHeight="48dp"
             android:layout_weight="1"
-            android:text="按住说话"
+            android:text="Press to speak"
             android:layout_marginEnd="8dp"/>
 
         <Button
@@ -84,7 +84,7 @@
             android:layout_height="wrap_content"
             android:minHeight="48dp"
             android:layout_weight="1"
-            android:text="提交"/>
+            android:text="Submit"/>
 
     </LinearLayout>
 

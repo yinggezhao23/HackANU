@@ -9,15 +9,21 @@ public class PatientInfo {
     private String diseaseProgress;
     private String symptoms;
     private List<Medication> medicationPlan;  // 服药计划
+    private String speakContent;
 
-    public PatientInfo(String diseaseName, String diseaseProgress, String symptoms) {
+    public PatientInfo(String diseaseName, String diseaseProgress, String symptoms, String speakContent) {
         this.diseaseName = diseaseName;
         this.diseaseProgress = diseaseProgress;
         this.symptoms = symptoms;
         this.medicationPlan = new ArrayList<>();
+        this.speakContent=speakContent;
     }
 
     // Getters and setters
+    public String getSpeakContent() {
+        return speakContent;
+    }
+
     public String getDiseaseName() {
         return diseaseName;
     }

@@ -14,6 +14,7 @@
         android:orientation="vertical"
         android:padding="16dp">
 
+
         <TextView
             android:id="@+id/disease_name_text_view"
             android:layout_width="wrap_content"
@@ -33,6 +34,14 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
+            tools:text="症状: 发烧、咳嗽" />
+
+        <TextView
+            android:id="@+id/speak_content"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textColor="@android:color/holo_green_dark"
             tools:text="症状: 发烧、咳嗽" />
 
         <TextView
